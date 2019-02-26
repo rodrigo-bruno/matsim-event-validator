@@ -89,18 +89,28 @@ public class App {
 
     // step 1: check if the exp and result contain the same agents
     public static boolean validate_agents() {
-        boolean pass = true;
         int exp_num_agents = exp_agent_time_lines.size();
         int res_num_agents = res_agent_time_lines.size();
 
         System.out.println(String.format("Number of agents: est=%d res=%d",
             res_num_agents, exp_num_agents));
 
-        if (!exp_agent_time_lines.keySet().equals(res_agent_time_lines.keySet())) {
-            pass = false;
-            System.out.println("agents are not the same ");
+        if (exp_agent_time_lines.keySet().equals(res_agent_time_lines.keySet())) {
+            return true;
         }
-        return pass;
+
+        for (String res_agent : res_agent_time_lines.keySet()) {
+            if (!exp_agent_time_lines.containsKey(res_agent)) {
+                System.out.println(String.format("agent missing: %s", res_agent));
+            }
+        }
+        for (String exp_agent : exp_agent_time_lines.keySet()) {
+            if (!res_agent_time_lines.containsKey(exp_agent)) {
+                System.out.println(String.format("agent introduced:  %s", exp_agent));
+            }
+        }
+
+        return false;
     }
 
     public static int count_events(Map<String, List<String>> time_lines) {
