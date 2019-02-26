@@ -92,21 +92,21 @@ public class App {
         int exp_num_agents = exp_agent_time_lines.size();
         int res_num_agents = res_agent_time_lines.size();
 
-        System.out.println(String.format("Number of agents: est=%d res=%d",
-            res_num_agents, exp_num_agents));
-
         if (exp_agent_time_lines.keySet().equals(res_agent_time_lines.keySet())) {
             return true;
         }
 
+        System.out.println(String.format("Number of agents: est=%d res=%d",
+            res_num_agents, exp_num_agents));
+
         for (String res_agent : res_agent_time_lines.keySet()) {
             if (!exp_agent_time_lines.containsKey(res_agent)) {
-                System.out.println(String.format("agent missing: %s", res_agent));
+                System.out.println(String.format("agent introduced: %s", res_agent));
             }
         }
         for (String exp_agent : exp_agent_time_lines.keySet()) {
             if (!res_agent_time_lines.containsKey(exp_agent)) {
-                System.out.println(String.format("agent introduced:  %s", exp_agent));
+                System.out.println(String.format("agent missing:  %s", exp_agent));
             }
         }
 
