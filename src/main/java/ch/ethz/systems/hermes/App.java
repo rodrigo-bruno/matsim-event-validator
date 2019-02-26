@@ -5,11 +5,12 @@ import java.util.*;
 
 public class App {
 
-    public static final List<String> exp_lines = new ArrayList<>();
-    public static final List<String> res_lines = new ArrayList<>();
-
     public static final Map<String, Map<String, List<String>>> exp_agent_time_lines = new HashMap<>();
     public static final Map<String, Map<String, List<String>>> res_agent_time_lines = new HashMap<>();
+
+    public static void log(String msg) {
+        System.out.println(String.format("%s %s", new java.util.Date(), msg));
+    }
 
     public static void load_lines(String file, List<String> array) throws Exception {
         try(BufferedReader br = new BufferedReader(new FileReader(file))) {
@@ -168,6 +169,7 @@ public class App {
     public static boolean validate_events_notime() {
         boolean pass = true;
         Set<String> agents = exp_agent_time_lines.keySet();
+        // TODO - parallelize loop
         for (String agent : agents) {
             pass = compare_events(agent) && pass;
         }
@@ -184,42 +186,45 @@ public class App {
         String exp_log = args[1];
         String res_tag = args[2];
         String res_log = args[3];
-        String out_dir = args[4];
-        System.out.println(String.format("Validating expected %s-%s against %s-%s", 
+        log(String.format("Validating expected %s-%s against %s-%s",
             exp_tag, exp_log, res_tag, res_log));
 
-        load_lines(exp_log, exp_lines);
-        load_lines(res_log, res_lines);
+        {
+            List<String> exp_lines = new ArrayList<>();
+            List<String> res_lines = new ArrayList<>();
 
-        process_lines(exp_lines, exp_agent_time_lines);
-        process_lines(res_lines, res_agent_time_lines);
+            log("Loading lines...");
+            load_lines(exp_log, exp_lines);
+            load_lines(res_log, res_lines);
+            log("Loading lines... Done!");
 
-        exp_lines.clear();
-        res_lines.clear();
+            // TODO - parelellize line processing
+            log("Processing lines...");
+            process_lines(exp_lines, exp_agent_time_lines);
+            process_lines(res_lines, res_agent_time_lines);
+            log("Processing lines... Done!");
+        }
 
-//        dump_lines(out_dir + "/" + exp_tag, exp_agent_time_lines);
-//        dump_lines(out_dir + "/" + res_tag, res_agent_time_lines);
-
-        System.out.println("Validating agents!");
+        log("Validating agents!");
         if (!validate_agents()) {
-            System.out.println("Number of agents NOK!");
+            log("Number of agents NOK!");
             return;
         }
-        System.out.println("Number of agents OK!");
+        log("Number of agents OK!");
 
-        System.out.println("Validating number of events!");
+        log("Validating number of events!");
         if (!validate_number()) {
-            System.out.println("Number of events NOK!");
+            log("Number of events NOK!");
             return;
         }
-        System.out.println("Number of events OK!");
+        log("Number of events OK!");
 
-        System.out.println("Validating events without time OK!");
+        log("Validating events without time OK!");
         if (!validate_events_notime()) {
-            System.out.println("Events without time NOK!");
+            log("Events without time NOK!");
             return;
         }
-        System.out.println("Events without time OK!");
+        log("Events without time OK!");
 
     }
 }
