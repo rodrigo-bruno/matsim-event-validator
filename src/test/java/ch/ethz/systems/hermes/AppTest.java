@@ -1,4 +1,4 @@
-package coch.ethz.systems.hermes;
+package ch.ethz.systems.hermes;
 
 import static org.junit.Assert.assertTrue;
 
