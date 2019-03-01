@@ -119,6 +119,16 @@ public class App {
                     }
                     break;
                 }
+                case "stuckAndAbort" : {
+                    String person = get_xml_field(splits, "person");
+                    if (person == null) {
+                        System.out.println(String.format("person is null: %s", line));
+                        ret.set(false);
+                    } else {
+                        safe_add_entry(agent_time_lines, person, time, line);
+                    }
+                    break;
+                }
                 default:
                     System.out.println(String.format("unknow event type: %s", line));
                     ret.set(false);

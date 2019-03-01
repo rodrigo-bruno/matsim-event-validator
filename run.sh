@@ -26,9 +26,14 @@ cat $input | grep "ETHZ hermes event" | cut -d " " -f 4- > temp/hermes.log
 $java -Xmx12g \
     -cp target/matsim-sim-validator-1.0-SNAPSHOT.jar \
     ch.ethz.systems.hermes.App \
-    qsim $script_dir/temp/qsim.log hermes $script_dir/temp/hermes.log $script_dir/temp > $script_dir/run.log
+    qsim $script_dir/temp/qsim.log hermes $script_dir/temp/hermes.log $script_dir/temp | tee $script_dir/run.log
 
 cd - &> /dev/null
+
+# TODO - build debug tool
+# grep -RI "\"1000001\"" run.log  | grep "qsim" > qsim.log
+# grep -RI "\"1000001\"" run.log  | grep "hermes" > hermes.log
+# vimdiff qsim.log hermes.log
 
 paplay /usr/share/sounds/freedesktop/stereo/complete.oga
 beep
