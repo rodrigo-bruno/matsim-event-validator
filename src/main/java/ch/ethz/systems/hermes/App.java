@@ -4,6 +4,7 @@ import java.io.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 public class App {
 
@@ -187,23 +188,50 @@ public class App {
         return pass;
     }
 
-    public static boolean compare_events(String agent) {
-        int nlines = count_events(exp_agent_time_lines.get(agent));
-        Map<Integer, List<String>> exp_time_lines = exp_agent_time_lines.get(agent);
-        Map<Integer, List<String>> res_time_lines = res_agent_time_lines.get(agent);
-        ArrayList<String> exp_sorted_lines = new ArrayList<>(nlines);
-        ArrayList<String> res_sorted_lines = new ArrayList<>(nlines);
+    // Removes fields from a line (event) or completely removes it.
+    public static String sanitize_line(String agent, String line) {
+        String[] splits = line.split(" ");
+        String type = get_xml_field(splits, "type");
 
+        // Ignoring person interactions when validating pt vehicles
+        if (type.equals("PersonLeavesVehicle") || type.equals("PersonEntersVehicle")) {
+            if(get_xml_field(splits, "vehicle").equals(agent)) {
+                return null;
+            }
+        }
+
+        for (int i = 0; i < splits.length; i++) {
+            // Ignoring time and delay tags on events
+            if (splits[i].startsWith("time=") || splits[i].startsWith("delay=")) {
+                splits[i] = "";
+            }
+        }
+        return Arrays.stream(splits).collect(Collectors.joining(" "));
+    }
+
+    public static ArrayList<String> prepare_events(String agent, Map<Integer, List<String>> time_lines) {
+        int nlines = count_events(time_lines);
+        ArrayList<String> sorted_lines = new ArrayList<>(nlines);
         // note, I only sort the time, not the actual content of the event. This
         // perserves that order by which the events were generated.
-        for (Integer time : new TreeSet<>(exp_time_lines.keySet())) {
-            exp_sorted_lines.addAll(exp_time_lines.get(time));
+        for (Integer time : new TreeSet<>(time_lines.keySet())) {
+            for (String line : time_lines.get(time)) {
+                String sanitized = sanitize_line(agent, line);
+                if (sanitized != null) {
+                    sorted_lines.add(sanitized);
+                }
+            }
         }
-        for (Integer time : new TreeSet<>(res_time_lines.keySet())) {
-            res_sorted_lines.addAll(res_time_lines.get(time));
-        }
+        return sorted_lines;
+    }
 
-        for (int i = 0; i < nlines; i++) {
+    public static boolean compare_events(String agent) {
+        Map<Integer, List<String>> exp_time_lines = exp_agent_time_lines.get(agent);
+        Map<Integer, List<String>> res_time_lines = res_agent_time_lines.get(agent);
+        ArrayList<String> exp_sorted_lines = prepare_events(agent, exp_time_lines);
+        ArrayList<String> res_sorted_lines = prepare_events(agent, res_time_lines);
+
+        for (int i = 0; i < exp_sorted_lines.size(); i++) {
             String[] exp_splits = exp_sorted_lines.get(i).split(" ");
             String[] res_splits = res_sorted_lines.get(i).split(" ");
 
