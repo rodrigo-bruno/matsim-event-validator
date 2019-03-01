@@ -188,6 +188,12 @@ public class App {
             if (splits[i].startsWith("time=") || splits[i].startsWith("delay=")) {
                 splits[i] = "";
             }
+            // Ignore the vehicle id when a person enters a pt
+            if (splits[i].startsWith("vehicle=\"tr_") &&
+                    (type.equals("PersonEntersVehicle") ||
+                    type.equals("PersonLeavesVehicle"))) {
+                splits[i] = "";
+            }
         }
         return Arrays.stream(splits).collect(Collectors.joining(" "));
     }
