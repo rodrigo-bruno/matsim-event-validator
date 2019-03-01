@@ -54,7 +54,6 @@ public class App {
             Integer time = (int)Float.parseFloat(get_xml_field(splits, "time"));
             String type = get_xml_field(splits, "type");
 
-            // TODO - need to remove events agents hoping into PT from PT agent.
             switch (type) {
                 case "travelled" :
                 case "arrival" :
@@ -172,22 +171,6 @@ public class App {
         return count;
     }
 
-    // step 2: check if, for every agent, the number of events is the same
-    public static boolean validate_number() {
-        boolean pass = true;
-        Set<String> agents = exp_agent_time_lines.keySet();
-        for (String agent : agents) {
-            int exp_event_count = count_events(exp_agent_time_lines.get(agent));
-            int res_event_count = count_events(res_agent_time_lines.get(agent));
-            if (exp_event_count != res_event_count) {
-                pass = false;
-                System.out.println(String.format("number of events do not match (diff = %d) for agent %s",
-                    exp_event_count - res_event_count, agent));
-            }
-        }
-        return pass;
-    }
-
     // Removes fields from a line (event) or completely removes it.
     public static String sanitize_line(String agent, String line) {
         String[] splits = line.split(" ");
@@ -231,6 +214,14 @@ public class App {
         ArrayList<String> exp_sorted_lines = prepare_events(agent, exp_time_lines);
         ArrayList<String> res_sorted_lines = prepare_events(agent, res_time_lines);
 
+        // check number of events
+        if (exp_sorted_lines.size() != res_sorted_lines.size()) {
+                System.out.println(String.format("number of events do not match (diff = %d) for agent %s",
+                    exp_sorted_lines.size() - res_sorted_lines.size(), agent));
+                return false;
+        }
+
+        // check actual event content
         for (int i = 0; i < exp_sorted_lines.size(); i++) {
             String[] exp_splits = exp_sorted_lines.get(i).split(" ");
             String[] res_splits = res_sorted_lines.get(i).split(" ");
@@ -243,12 +234,6 @@ public class App {
 
             // Line syntax: <event time="39698.0" ... />
             for (int j = 0; j < exp_splits.length; j++) {
-                // this is related to timing, which we are not testing.
-                if (exp_splits[j].startsWith("time=") || exp_splits[j].startsWith("delay=")) {
-                    continue;
-                }
-                // TODO - depending on the type of event, we might want to skip some other fields
-
                 if (!exp_splits[j].equals(res_splits[j])) {
                     System.out.println(String.format("event do not match at token %d \n\t%s\n\t%s",
                         j, exp_sorted_lines.get(i), res_sorted_lines.get(i)));
@@ -259,7 +244,6 @@ public class App {
         return true;
     }
 
-    // step 3; check if, the events are exactly the same when ignoring time
     public static boolean validate_events_notime() {
         AtomicBoolean pass = new AtomicBoolean(true);
         exp_agent_time_lines.keySet().parallelStream().forEach((String agent) -> {
@@ -311,13 +295,6 @@ public class App {
             return;
         }
         log("Checking number of agents... Done!");
-
-        log("Checking number of events...");
-        if (!validate_number()) {
-            log("Checking number of events... Failed!");
-            return;
-        }
-        log("Checking number of events... Done!");
 
         log("Checking events without time...");
         if (!validate_events_notime()) {
