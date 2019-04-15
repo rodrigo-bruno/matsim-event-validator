@@ -1,0 +1,9 @@
+*.log
+*.png
+*.dat
+.classpath
+editinfo
+.project
+.metadata
+.settings
+target

@@ -10,6 +10,8 @@ public class App {
 
     public static final Map<String, Map<Integer, List<String>>> exp_agent_time_lines = new ConcurrentHashMap<>();
     public static final Map<String, Map<Integer, List<String>>> res_agent_time_lines = new ConcurrentHashMap<>();
+    public static final Map<String, Integer> exp_agent_traveltime = new ConcurrentHashMap();
+    public static final Map<String, Integer> res_agent_traveltime = new ConcurrentHashMap();
 
     public static void log(String msg) {
         System.out.println(String.format("%s %s", new java.util.Date(), msg));
@@ -176,11 +178,10 @@ public class App {
         String[] splits = line.split(" ");
         String type = get_xml_field(splits, "type");
 
-        // Ignoring person interactions when validating pt vehicles
+        // Ignoring person interactions with vehicles. This is because of PT interactions where we should not match the
+        // vehicle (it might be different due to timing in schedules).
         if (type.equals("PersonLeavesVehicle") || type.equals("PersonEntersVehicle")) {
-            if(get_xml_field(splits, "vehicle").equals(agent)) {
-                return null;
-            }
+            return null;
         }
 
         for (int i = 0; i < splits.length; i++) {
@@ -188,22 +189,29 @@ public class App {
             if (splits[i].startsWith("time=") || splits[i].startsWith("delay=")) {
                 splits[i] = "";
             }
-            // Ignore the vehicle id when a person enters a pt
-            if (splits[i].startsWith("vehicle=\"tr_") &&
-                    (type.equals("PersonEntersVehicle") ||
-                    type.equals("PersonLeavesVehicle"))) {
+
+            // Ignoring elements from stuck and abort
+            if (type.equals("stuckAndAbort") && (splits[i].startsWith("link=") || splits[i].startsWith("legMode="))) {
                 splits[i] = "";
             }
         }
         return Arrays.stream(splits).collect(Collectors.joining(" "));
     }
 
-    public static ArrayList<String> prepare_events(String agent, Map<Integer, List<String>> time_lines) {
+    public static ArrayList<String> prepare_events(
+            String agent, Map<Integer, List<String>> time_lines, Map<String, Integer> traveltime) {
         int nlines = count_events(time_lines);
         ArrayList<String> sorted_lines = new ArrayList<>(nlines);
+        int start = 0;
+        int finish = 0;
+
         // note, I only sort the time, not the actual content of the event. This
         // perserves that order by which the events were generated.
         for (Integer time : new TreeSet<>(time_lines.keySet())) {
+            if (start == 0) {
+                start = time;
+            }
+            finish = time;
             for (String line : time_lines.get(time)) {
                 String sanitized = sanitize_line(agent, line);
                 if (sanitized != null) {
@@ -211,14 +219,15 @@ public class App {
                 }
             }
         }
+
+        traveltime.put(agent, finish - start);
+
         return sorted_lines;
     }
 
     public static boolean compare_events(String agent) {
-        Map<Integer, List<String>> exp_time_lines = exp_agent_time_lines.get(agent);
-        Map<Integer, List<String>> res_time_lines = res_agent_time_lines.get(agent);
-        ArrayList<String> exp_sorted_lines = prepare_events(agent, exp_time_lines);
-        ArrayList<String> res_sorted_lines = prepare_events(agent, res_time_lines);
+        ArrayList<String> exp_sorted_lines = prepare_events(agent, exp_agent_time_lines.get(agent), exp_agent_traveltime);
+        ArrayList<String> res_sorted_lines = prepare_events(agent, res_agent_time_lines.get(agent), res_agent_traveltime);
 
         // check number of events
         if (exp_sorted_lines.size() != res_sorted_lines.size()) {
@@ -250,7 +259,7 @@ public class App {
         return true;
     }
 
-    public static boolean validate_events_notime() {
+    public static boolean validate_events() {
         AtomicBoolean pass = new AtomicBoolean(true);
         exp_agent_time_lines.keySet().parallelStream().forEach((String agent) -> {
             pass.set(compare_events(agent) && pass.get());
@@ -260,6 +269,26 @@ public class App {
 
     // step 4: measure how off are we w.r.t. timming
     public static void measure_time_skew() {
+        // number of agents per percentage of time skew w.r.t. exp duration.
+        int skew[] = new int[100];
+        int num_agents = exp_agent_traveltime.size();
+
+        for (String agent : exp_agent_traveltime.keySet()) {
+            int exp_duration = exp_agent_traveltime.get(agent);
+            int res_duration = res_agent_traveltime.get(agent);
+
+            if (exp_duration == 0) {
+                continue;
+                // TODO - is this expected?
+            }
+
+            int skew_perc = Math.abs(exp_duration - res_duration) * 100 / exp_duration;
+            skew[ Math.min(skew_perc, 99) ]++;
+        }
+
+        for (int i = 0; i < 100; i++) {
+            System.out.println(String.format("skew %d percent is %d", i, (int)skew[i]));
+        }
 
     }
 
@@ -302,11 +331,14 @@ public class App {
         }
         log("Checking number of agents... Done!");
 
-        log("Checking events without time...");
-        if (!validate_events_notime()) {
-            log("Checking events without time... Failed!");
-            return;
+        log("Checking events...");
+        if (!validate_events()) {
+            log("Checking events... Failed!");
         }
-        log("Checking events without time... Done!");
+        log("Checking events... Done!");
+
+        log("Measuring agent traveltimes...");
+        measure_time_skew();
+        log("Measuring agent traveltimes... Done!");
     }
 }

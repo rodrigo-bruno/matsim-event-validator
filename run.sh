@@ -2,7 +2,8 @@
 
 script_dir=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
-export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+export JAVA_HOME=/usr/lib/jvm/jdk-11.0.2
+#export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
 java=$JAVA_HOME/bin/java
 
 cd $script_dir
@@ -16,24 +17,21 @@ if [ "$#" -ne 1 ]; then
     exit 1
 fi
 
-rm -r temp &> /dev/null
-mkdir temp &> /dev/null
-
-cat $input | grep "ETHZ qsim event" | cut -d " " -f 4- > temp/qsim.log
-cat $input | grep "ETHZ hermes event" | cut -d " " -f 4- > temp/hermes.log
+cat $input | grep "ETHZ qsim event" | cut -d " " -f 4- > qsim.log
+cat $input | grep "ETHZ hermes event" | cut -d " " -f 4- > hermes.log
 
 # run the validator
 $java -Xmx12g \
     -cp target/matsim-sim-validator-1.0-SNAPSHOT.jar \
     ch.ethz.systems.hermes.App \
-    qsim $script_dir/temp/qsim.log hermes $script_dir/temp/hermes.log $script_dir/temp | tee $script_dir/run.log
+        qsim $script_dir/qsim.log \
+        hermes $script_dir/hermes.log \
+        $script_dir | tee $script_dir/run.log
+
+grep "skew" run.log | awk '{ print $2 " " $5}' > skew.dat
+./plot-skew.gnuplot
 
 cd - &> /dev/null
-
-# TODO - build debug tool
-# grep -RI "\"1000001\"" run.log  | grep "qsim" > qsim.log
-# grep -RI "\"1000001\"" run.log  | grep "hermes" > hermes.log
-# vimdiff qsim.log hermes.log
 
 paplay /usr/share/sounds/freedesktop/stereo/complete.oga
 beep
