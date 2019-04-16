@@ -293,12 +293,9 @@ public class App {
     }
 
     public static void main(String[] args) throws Exception {
-        String exp_tag = args[0];
-        String exp_log = args[1];
-        String res_tag = args[2];
-        String res_log = args[3];
-        log(String.format("Validating expected %s-%s against %s-%s",
-            exp_tag, exp_log, res_tag, res_log));
+        String exp_log = args[0];
+        String res_log = args[1];
+        log(String.format("Validating expected %s against %s", exp_log, res_log));
 
         {
             List<String> exp_lines = new ArrayList<>();
