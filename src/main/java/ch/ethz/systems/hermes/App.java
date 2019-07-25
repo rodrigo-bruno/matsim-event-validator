@@ -87,7 +87,8 @@ public class App {
                 case "vehicleenterstraffic" :
                 case "vehicleleavestraffic" :
                 case "PersonEntersVehicle" :
-                case "PersonLeavesVehicle" : {
+                case "PersonLeavesVehicle" :
+                case "personParkingCost" : {
                     String person = get_xml_field(splits, "person");
                     String vehicle = get_xml_field(splits, "vehicle");
                     if (vehicle == null || person == null) {
@@ -268,27 +269,43 @@ public class App {
     }
 
     // step 4: measure how off are we w.r.t. timming
-    public static void measure_time_skew() {
+    public static void measure_time_skew() throws IOException {
         // number of agents per percentage of time skew w.r.t. exp duration.
-        int skew[] = new int[100];
-        int num_agents = exp_agent_traveltime.size();
+        ArrayList<ArrayList<String>> skew = new ArrayList<>(100);
 
+        for (int i = 0; i < 100; i++) {
+        	skew.add(new ArrayList<String>());
+        }
+        
         for (String agent : exp_agent_traveltime.keySet()) {
             int exp_duration = exp_agent_traveltime.get(agent);
             int res_duration = res_agent_traveltime.get(agent);
 
             if (exp_duration == 0) {
+            	if (res_duration > 0) {
+            		System.out.println(String.format("Warning exp duration zero but res duraction is above zero for %s", agent));		
+            	} else {
+            		skew.get(0).add(agent);
+            	}
                 continue;
-                // TODO - is this expected?
             }
 
             int skew_perc = Math.abs(exp_duration - res_duration) * 100 / exp_duration;
-            skew[ Math.min(skew_perc, 99) ]++;
+            skew.get(Math.min(skew_perc, 99)).add(agent);
         }
 
+        // write skew percentage histogram
         for (int i = 0; i < 100; i++) {
-            System.out.println(String.format("skew %d percent is %d", i, (int)skew[i]));
+            System.out.println(String.format("skew %d percent is %d", i, skew.get(i).size()));
         }
+        
+        FileWriter writer = new FileWriter("agents.log"); 
+        for (int i = 0; i < 100; i++) {
+        	for (String agent : skew.get(i)) {
+        		writer.write(String.format("%s (skew of %d pct)\n", agent, i));	
+        	}
+        }
+        writer.close();
 
     }
 
